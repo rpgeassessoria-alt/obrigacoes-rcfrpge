@@ -1,0 +1,16 @@
+import { NextResponse } from 'next/server';
+import { OptantesMeiService } from '../../../../../lib/integra-contador/mei/optantes';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const cnpj = searchParams.get('cnpj');
+
+  if (!cnpj) return NextResponse.json({ error: 'CNPJ obrigatório' }, { status: 400 });
+
+  try {
+    const data = await OptantesMeiService.consultarSituacao(cnpj);
+    return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json(error.response?.data || { error: error.message }, { status: error.response?.status || 500 });
+  }
+}

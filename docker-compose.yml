@@ -1,0 +1,128 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════════
+# FiscoControl — Stack Completa de Produção
+# Serviços: App Next.js | PostgreSQL | Redis | Evolution API (WhatsApp)
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── 1. Aplicação Next.js (FiscoControl) ─────────────────────────
+  app:
+    build:
+      context: ./fiscocontrol-app
+      dockerfile: Dockerfile
+    container_name: fiscocontrol_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://fiscocontrol:${DB_PASSWORD}@postgres:5432/fiscocontrol_db"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      WHATSAPP_API_URL: "http://evolution-api:8080"
+      WHATSAPP_API_KEY: "${WHATSAPP_API_KEY:-fiscocontrol_secret_key}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fiscocontrol_net
+    volumes:
+      - ./fiscocontrol-app:/app
+      - /app/node_modules
+      - /app/.next
+
+  # ── 2. PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: fiscocontrol_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: fiscocontrol
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-senha_padrao_dev}"
+      POSTGRES_DB: fiscocontrol_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fiscocontrol_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fiscocontrol -d fiscocontrol_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 3. Redis (cache de sessões e filas) ──────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: fiscocontrol_redis
+    restart: always
+    command: redis-server --requirepass "${REDIS_PASSWORD:-redis_padrao_dev}"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - fiscocontrol_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 4. Evolution API — WhatsApp Não Oficial ──────────────────────
+  evolution-api:
+    image: atendare/evolution-api:latest
+    container_name: fiscocontrol_whatsapp
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_URL: "${NEXTAUTH_URL:-http://localhost}:8080"
+      AUTHENTICATION_TYPE: apikey
+      AUTHENTICATION_API_KEY: "${WHATSAPP_API_KEY:-fiscocontrol_secret_key}"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: "postgresql://fiscocontrol:${DB_PASSWORD:-senha_padrao_dev}@postgres:5432/fiscocontrol_db"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: "redis://:${REDIS_PASSWORD:-redis_padrao_dev}@redis:6379/2"
+      STORE_MESSAGES: "true"
+      DEFAULT_CONNECTION_RECONNECT: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fiscocontrol_net
+    volumes:
+      - evolution_instances:/evolution/instances
+
+  # ── 5. Prisma Studio (opcional — só em dev) ──────────────────────
+  # Descomente para acessar o banco visual: http://localhost:5555
+  # prisma-studio:
+  #   build:
+  #     context: ./fiscocontrol-app
+  #     dockerfile: Dockerfile
+  #   container_name: fiscocontrol_studio
+  #   command: npx prisma studio
+  #   ports:
+  #     - "5555:5555"
+  #   environment:
+  #     DATABASE_URL: "postgresql://fiscocontrol:${DB_PASSWORD}@postgres:5432/fiscocontrol_db"
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - fiscocontrol_net
+
+networks:
+  fiscocontrol_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:

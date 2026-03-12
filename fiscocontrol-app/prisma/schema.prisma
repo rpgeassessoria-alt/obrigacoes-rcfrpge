@@ -1,0 +1,124 @@
+// Prisma Schema — MODO DESENVOLVIMENTO LOCAL (SQLite)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  users     User[]
+  clients   Client[]
+  groups    EconomicGroup[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EconomicGroup {
+  id        String   @id @default(cuid())
+  name      String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String
+  clients   Client[]
+  users     User[]   @relation("UserToGroup")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      String   @default("ASSISTENTE")
+  cargo     String?
+  telefone  String?
+  active    Boolean  @default(true)
+  
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  tenantId  String?
+  allowedGroups EconomicGroup[] @relation("UserToGroup")
+  
+  clients   Client[] @relation("UserToClient")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id                 String       @id @default(cuid())
+  razaoSocial        String
+  cnpj               String       @unique
+  regime             String
+  cnae               String?
+  inscricaoEstadual  String?
+  inscricaoMunicipal String?
+  status             String       @default("Ativo")
+  risco              String       @default("Baixo")
+  nomeFantasia       String?
+  email              String?
+  telefone           String?
+  
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  tenantId  String?
+  group     EconomicGroup? @relation(fields: [economicGroupId], references: [id])
+  economicGroupId String?
+
+  responsible        User?        @relation("UserToClient", fields: [responsibleId], references: [id])
+  responsibleId      String?
+  obligations        Obligation[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model Obligation {
+  id          String           @id @default(cuid())
+  nome        String
+  identifier  String
+  competencia String
+  vencimento  DateTime
+  status      String           @default("PENDENTE")
+  esfera      String
+  client      Client           @relation(fields: [clientId], references: [id])
+  clientId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Integra Contador Serpro API - Models de Integração
+// ─────────────────────────────────────────────────────────────
+
+model SerproToken {
+  id           String   @id @default(cuid())
+  accessToken  String   @unique
+  expiresAt    DateTime // Quando o token expira
+  scope        String?  // Escopo do token
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model IntegraLog {
+  id          String   @id @default(cuid())
+  endpoint    String   // Ex: /integra-mei/ccmei
+  cnpj        String?  // CNPJ consultado
+  status      Int      // HTTP Status Code (200, 401, 500, etc)
+  response    String?  // Guarda resposta (ou erro) em JSON stringificado
+  createdAt   DateTime @default(now())
+}
+
+model IntegraCache {
+  id          String   @id @default(cuid())
+  cacheKey    String   @unique // Ex: ccmei_12345678000195
+  data        String   // Dados cacheados em formato JSON
+  expiresAt   DateTime // Data de expiração do cache
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([cacheKey])
+}

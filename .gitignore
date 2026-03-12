@@ -1,0 +1,33 @@
+# ── Node ──────────────────────────────────────────────
+node_modules/
+.npm
+
+# ── Next.js ──────────────────────────────────────────
+.next/
+out/
+
+# ── Ambiente ──────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.development
+
+# ── Build ─────────────────────────────────────────────
+dist/
+build/
+
+# ── Logs ──────────────────────────────────────────────
+*.log
+npm-debug.log*
+deploy.log
+
+# ── Sistema Operacional ───────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDEs ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
