@@ -146,9 +146,13 @@
 - [x] Criar `src/app/api/integra-contador/procuracoes/route.ts`
 - [x] Integrar status de procuração em `src/app/procuracoes/`
 
-### Comprovantes de Pagamento
+### Comprovantes de Pagamento (BACKLOG)
 - [ ] Criar `src/lib/integra-contador/pagamentos/index.ts`
 - [ ] Criar `src/app/api/integra-contador/pagamentos/route.ts`
+
+### Segurança e Governança (BACKLOG - Aguardando Credenciais)
+- [ ] Validar sessões com NextAuth (JWT) nas rotas `route.ts`
+- [ ] Bloquear endpoints de quem não está autenticado no FiscoControl
 - [ ] Integrar comprovantes no Dashboard
 
 ---
